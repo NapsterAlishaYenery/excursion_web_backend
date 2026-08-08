@@ -3,7 +3,7 @@ const { Schema, model } = require('mongoose');
 const slugify = require('slugify');
 const stringArrayValidator = require('../utils/string-array.validator');
 const priceValidator = require('../utils/price.validator');
-const ImagesSchema = require('./schema/images.schema');
+const { ImagesSchema } = require('./schema/images.schema');
 
 const ExcursionSchema = new Schema({
     // ========================================

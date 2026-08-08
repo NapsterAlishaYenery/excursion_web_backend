@@ -1,3 +1,5 @@
+// src/models/schemas/images.schema.js
+const { Schema } = require('mongoose');
 
 const ImageItemSchema = new Schema({
     public_id: {
@@ -14,7 +16,7 @@ const ImageItemSchema = new Schema({
         type: String,
         required: [true, 'Alt (alt text) is required'],
         trim: true,
-        default: 'Project capture ExpediNap Tech'
+        default: 'Project capture'
     }
 }, { _id: false });
 
@@ -32,4 +34,8 @@ const ImagesSchema = new Schema(
     { _id: false }
 );
 
-module.exports = ImagesSchema;
+// ✅ Exportar ambos
+module.exports = {
+    ImageItemSchema,
+    ImagesSchema
+};
