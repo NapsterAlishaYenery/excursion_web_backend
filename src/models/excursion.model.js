@@ -3,7 +3,7 @@ const { Schema, model } = require('mongoose');
 const slugify = require('slugify');
 const stringArrayValidator = require('../utils/string-array.validator');
 const priceValidator = require('../utils/price.validator');
-const { ImagesSchema } = require('./schema/images.schema');
+const { ImagesSchema } = require('./schemas/images.schema');
 
 const ExcursionSchema = new Schema({
     // ========================================
@@ -96,7 +96,7 @@ const ExcursionSchema = new Schema({
     },
     availableDays: {
         type: [String],
-        enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+        enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'week'],
         required: [true, 'At least one day is required']
     },
 
@@ -104,7 +104,7 @@ const ExcursionSchema = new Schema({
     // UBICACIÓN Y LOGÍSTICA
     // ========================================
     location: {
-        name: {
+        locationName: {
             type: String,
             required: [true, 'Location name is required'],
             trim: true
@@ -148,7 +148,7 @@ const ExcursionSchema = new Schema({
     // ========================================
     //  Itinerario con pasos
     itinerary: [{
-        title: {
+        titleItinerary: {
             type: String,
             required: true,
             trim: true
@@ -235,7 +235,8 @@ const ExcursionSchema = new Schema({
     },
     order: {
         type: Number,
-        default: 0
+        required: [true, 'Order is required'],
+        unique: true
     },
     isPublished: {
         type: Boolean,

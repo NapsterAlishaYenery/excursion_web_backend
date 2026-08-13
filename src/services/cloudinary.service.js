@@ -22,7 +22,8 @@ exports.uploadFile = async (filePath, folder) => {
             width: result.width,
             height: result.height,
             format: result.format,
-            resource_type: result.resource_type // 'image' o 'video'
+            resource_type: result.resource_type, // 'image' o 'video'
+            duration: result.duration || null
         };
 
     } catch (error) {

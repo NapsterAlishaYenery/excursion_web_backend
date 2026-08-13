@@ -12,11 +12,42 @@ const ImageItemSchema = new Schema({
         required: [true, 'URL is required'],
         trim: true,
     },
+    thumbnailUrl: {
+        type: String,
+        required: [true, 'The URL of thumbnail is required'],
+        trim: true
+    },
     alt: {
         type: String,
-        required: [true, 'Alt (alt text) is required'],
+        required: [true, 'Alternative text (alt text) is required for SEO.'],
         trim: true,
-        default: 'Project capture'
+        default: 'Excursion Web'
+    },
+    mediaType: {
+        type: String,
+        enum: ['image', 'video'],
+        default: 'image'
+    },
+    width: {
+        type: Number,
+        default: 0
+    },
+    height: {
+        type: Number,
+        default: 0
+    },
+    format: {
+        type: String,
+        default: 'jpg'
+    },
+    // Para ordenar manualmente las imágenes
+    order: {
+        type: Number,
+        default: 0
+    },
+    duration: {
+        type: Number,
+        default: null
     }
 }, { _id: false });
 
