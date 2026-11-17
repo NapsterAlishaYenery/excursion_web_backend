@@ -5,7 +5,7 @@ const validateExcursion = require('../middlewares/excursion-validator.middleware
 const upload = require('../middlewares/upload.middleware');
 const authMiddleware = require('../middlewares/auth.middleware');
 const isAdminMiddleware = require('../middlewares/isAdmin.middleware');
-const rateLimiter = require('../middlewares/rateLimiter.middleware');
+const { readLimiter, adminLimiter, writeLimiter } = require('../middlewares/rate-limiters');
 const validateId = require('../middlewares/validate-id.middleware');
 
 
@@ -22,6 +22,7 @@ const validateId = require('../middlewares/validate-id.middleware');
  */
 router.get(
     '/',
+    readLimiter,
     excursionController.getAllExcursions
 );
 
@@ -32,6 +33,7 @@ router.get(
  */
 router.get(
     '/public/:slug',
+    readLimiter,
     excursionController.getExcursionBySlug
 );
 
@@ -49,6 +51,7 @@ router.get(
     '/admin/:id',
     authMiddleware,
     isAdminMiddleware,
+    adminLimiter,
     validateId.id,
     excursionController.getExcursionById
 );
@@ -64,7 +67,7 @@ router.post(
     '/',
     authMiddleware,
     isAdminMiddleware,
-    rateLimiter,
+    writeLimiter,
     upload.array('images', 10),
     validateExcursion.create,
     excursionController.createExcursion
@@ -80,7 +83,7 @@ router.post(
     '/:id/gallery',
     authMiddleware,
     isAdminMiddleware,
-    rateLimiter,
+    writeLimiter,
     validateId.id,
     upload.array('images', 10),
     excursionController.addGalleryImages
@@ -96,7 +99,7 @@ router.patch(
     '/:id/main',
     authMiddleware,
     isAdminMiddleware,
-    rateLimiter,
+    writeLimiter,
     validateId.id,
     excursionController.swapMainImage
 );
@@ -110,8 +113,8 @@ router.patch(
     '/:id',
     authMiddleware,
     isAdminMiddleware,
+    writeLimiter,
     validateId.id,
-    rateLimiter,
     validateExcursion.update,
     excursionController.updateExcursion
 );
@@ -125,7 +128,7 @@ router.delete(
     '/:id/gallery/:index',
     authMiddleware,
     isAdminMiddleware,
-    rateLimiter,
+    writeLimiter,
     validateId.id,
     excursionController.deleteGalleryImage
 );
@@ -139,7 +142,7 @@ router.delete(
     '/admin/:id',
     authMiddleware,
     isAdminMiddleware,
-    rateLimiter,
+    writeLimiter,
     validateId.id,
     excursionController.deleteExcursion
 );

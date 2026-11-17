@@ -58,7 +58,6 @@ const ExcursionSchema = new Schema({
             min: [0, 'Price cannot be negative'],
             validate: priceValidator
         },
-        //  Solo para mostrar "Paga 3 días antes" o similar
         paymentTerms: {
             type: String,
             trim: true,
@@ -101,6 +100,42 @@ const ExcursionSchema = new Schema({
     },
 
     // ========================================
+    // TURNOS (Shifts)
+    // ========================================
+    shifts: {
+        // ¿Ofrece más de un turno al día? (doble/triple turno)
+        // Regla: solo aplica a excursiones < 6 horas
+        hasMultipleShifts: {
+            type: Boolean,
+            default: false
+        },
+        // Qué turnos específicos ofrece esta excursión
+        // morning: matutino | afternoon: vespertino | night: nocturno
+        availableShifts: {
+            type: [String],
+            enum: {
+                values: ['morning', 'afternoon', 'night'],
+                message: 'Shift must be one of: morning, afternoon, night'
+            },
+            default: ['morning'],
+            validate: {
+                validator: function (arr) {
+                    if (!Array.isArray(arr) || arr.length === 0) return false;
+
+                    // Si NO tiene múltiples turnos → exactamente 1
+                    if (!this.shifts?.hasMultipleShifts) {
+                        return arr.length === 1;
+                    }
+                    // Si SÍ tiene múltiples turnos → al menos 2 (doble/triple)
+                    return arr.length >= 2 && arr.length <= 3;
+                },
+                message:
+                    'Single-shift excursions must have exactly 1 shift; multi-shift excursions must have between 2 and 3 shifts'
+            }
+        }
+    },
+
+    // ========================================
     // UBICACIÓN Y LOGÍSTICA
     // ========================================
     location: {
@@ -113,7 +148,6 @@ const ExcursionSchema = new Schema({
             lat: Number,
             lng: Number
         },
-        //  Para "Punta Cana | 12h" en el card
         displayName: {
             type: String,
             trim: true
@@ -146,7 +180,6 @@ const ExcursionSchema = new Schema({
     // ========================================
     // CONTENIDO Y EXPERIENCIA
     // ========================================
-    //  Itinerario con pasos
     itinerary: [{
         titleItinerary: {
             type: String,
@@ -158,7 +191,6 @@ const ExcursionSchema = new Schema({
             required: true,
             trim: true
         },
-        //  Orden para mostrar con puntos y flechas
         order: {
             type: Number,
             default: 0
@@ -168,7 +200,6 @@ const ExcursionSchema = new Schema({
             default: 'bi-check-circle'
         }
     }],
-    //  Qué incluye y qué no
     inclusions: {
         included: {
             type: [String],
@@ -180,20 +211,18 @@ const ExcursionSchema = new Schema({
             default: []
         }
     },
-    //  Qué llevar
     whatToBring: {
         type: [String],
         required: [true, 'At least one item is required'],
         validate: stringArrayValidator()
     },
-    //  Restricciones importantes
     importantDetails: {
         type: [String],
         default: []
     },
 
     // ========================================
-    // BADGES Y ETIQUETAS (Para el Card View)
+    // BADGES Y ETIQUETAS
     // ========================================
     badges: [{
         text: {
@@ -214,11 +243,17 @@ const ExcursionSchema = new Schema({
     }],
 
     // ========================================
-    // IMÁGENES (Usando tu sub-modelo)
+    // IMÁGENES
     // ========================================
     images: {
         type: ImagesSchema,
         required: [true, 'Main image is required']
+    },
+    cloudinaryFolder: {
+        type: String,
+        required: [true, 'Cloudinary folder is required'],
+        unique: true,
+        trim: true
     },
 
     // ========================================
@@ -270,15 +305,15 @@ const ExcursionSchema = new Schema({
 // HOOKS
 // ========================================
 
-//  Generar slug automáticamente
 ExcursionSchema.pre('validate', function () {
+    // ✅ Generar slug automáticamente
     if (this.isNew && this.name && !this.slug) {
         const date = new Date();
         const dateString = date.toISOString().split('T')[0];
         this.slug = `${slugify(this.name, { lower: true, strict: true })}-${dateString}`;
     }
 
-    //  Validar que el depósito no exceda el precio
+    // ✅ Validar que el depósito no exceda el precio
     if (this.pricing.paymentTerms === 'deposit' &&
         this.pricing.depositPercentage > 100) {
         this.invalidate(
@@ -286,12 +321,61 @@ ExcursionSchema.pre('validate', function () {
             'Deposit percentage cannot exceed 100%'
         );
     }
+
+    // ✅ Regla de negocio: multi-turno SOLO si duración < 6 horas (o half_day)
+    if (this.shifts?.hasMultipleShifts) {
+        const unit = this.duration?.unit;
+        const value = this.duration?.value;
+
+        const isHourUnit = unit === 'hour' || unit === 'hours';
+        const isHalfDay = unit === 'half_day';
+
+        // Multi-turno permitido solo si:
+        //  - unit es hour/hours Y value < 6
+        //  - unit es half_day (por definición ≤ 6h)
+        const isShortDuration = (isHourUnit && value < 6) || isHalfDay;
+
+        if (!isShortDuration) {
+            this.invalidate(
+                'shifts.hasMultipleShifts',
+                'Multi-shift is only allowed for excursions shorter than 6 hours (hour < 6 or half_day)'
+            );
+        }
+    }
+
+    // ✅ Coherencia: sin multi-turno → exactamente 1 turno
+    if (
+        this.shifts &&
+        !this.shifts.hasMultipleShifts &&
+        Array.isArray(this.shifts.availableShifts) &&
+        this.shifts.availableShifts.length > 1
+    ) {
+        this.invalidate(
+            'shifts.availableShifts',
+            'Cannot have more than 1 shift when hasMultipleShifts is false'
+        );
+    }
+
+    // ✅ Coherencia: con multi-turno → mínimo 2 turnos
+    if (
+        this.shifts &&
+        this.shifts.hasMultipleShifts &&
+        Array.isArray(this.shifts.availableShifts) &&
+        this.shifts.availableShifts.length < 2
+    ) {
+        this.invalidate(
+            'shifts.availableShifts',
+            'Multi-shift excursions must have at least 2 available shifts'
+        );
+    }
 });
 
-//  Índices para búsquedas rápidas
+// ✅ Índices para búsquedas rápidas
 ExcursionSchema.index({ categories: 1 });
 ExcursionSchema.index({ 'location.coordinates': '2dsphere' });
 ExcursionSchema.index({ isPublished: 1, isFeatured: -1 });
+ExcursionSchema.index({ 'shifts.hasMultipleShifts': 1 });
+ExcursionSchema.index({ 'shifts.availableShifts': 1 });
 ExcursionSchema.index({ name: 'text', shortDescription: 'text', longDescription: 'text' });
 
 module.exports = model('excursion', ExcursionSchema);

@@ -6,14 +6,23 @@ const fs = require('fs').promises; // Para eliminar archivos temporales
  * Sube un archivo (imagen o video) a Cloudinary
  * @param {string} filePath - Ruta temporal del archivo
  * @param {string} folder - Carpeta en Cloudinary (ej: 'members', 'proposals')
+ * @param {string} subFolder - Carpeta dentro de folder que sera el nombre de la excurision
  */
-exports.uploadFile = async (filePath, folder) => {
+exports.uploadFile = async (filePath, folder, subFolder = null) => {
     try {
+
+        let cloudinaryFolder = `Excuriones-aneury-web/${folder}`;
+
+        if (subFolder) {
+            cloudinaryFolder = `${cloudinaryFolder}/${subFolder}`;
+        }
+
         const result = await cloudinary.uploader.upload(filePath, {
-            folder: `Excuriones-aneury-web/${folder}`,
+            folder: cloudinaryFolder,
             use_filename: true,
             unique_filename: true,
             overwrite: true,
+            resource_type: 'auto',
         });
 
         return {
@@ -36,9 +45,12 @@ exports.uploadFile = async (filePath, folder) => {
  * Elimina un archivo de Cloudinary
  * @param {string} public_id - El ID público del archivo
  */
-exports.deleteFile = async (public_id) => {
+exports.deleteFile = async (public_id, resource_type = 'image') => {
     try {
-        const result = await cloudinary.uploader.destroy(public_id);
+        const result = await cloudinary.uploader.destroy(public_id, {
+            resource_type: resource_type,
+            invalidate: true
+        });
         console.log(` File deleted from Cloudinary: ${public_id}`);
         return result;
     } catch (error) {

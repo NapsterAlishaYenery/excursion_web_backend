@@ -23,7 +23,7 @@ exports.createExcursion = async (req, res) => {
 
         // 3. Subir archivos a Cloudinary
         const uploadPromises = req.files.map(file =>
-            uploadFile(file.path, 'excursions')
+            uploadFile(file.path, 'excursions', excursionData.name)
         );
         const uploadResults = await Promise.all(uploadPromises);
 
@@ -70,6 +70,7 @@ exports.createExcursion = async (req, res) => {
         // 6. Construir el documento final
         const excursionDocument = {
             ...excursionData,
+            cloudinaryFolder: excursionData.name,
             images: images,
             order: nextOrder
         };
@@ -232,7 +233,7 @@ exports.addGalleryImages = async (req, res) => {
 
         // ✅ Subir archivos a Cloudinary
         const uploadPromises = req.files.map(file =>
-            uploadFile(file.path, 'excursions')
+            uploadFile(file.path, 'excursions', excursion.cloudinaryFolder)
         );
         const uploadResults = await Promise.all(uploadPromises);
 
@@ -435,7 +436,7 @@ exports.deleteGalleryImage = async (req, res) => {
         const imageToDelete = excursion.images.gallery[galleryIndex];
 
         // ✅ Eliminar de Cloudinary
-        await deleteFile(imageToDelete.public_id);
+        await deleteFile(imageToDelete.public_id, imageToDelete.mediaType);
 
         // ✅ Eliminar del array
         excursion.images.gallery.splice(galleryIndex, 1);
@@ -502,15 +503,15 @@ exports.deleteExcursion = async (req, res) => {
         const publicIdsToDelete = [];
 
         // 1. Agregar main image
-        if (excursion.images?.main?.public_id) {
-            publicIdsToDelete.push(excursion.images.main.public_id);
+        if (excursion.images?.main) {
+            publicIdsToDelete.push(excursion.images.main);
         }
 
         // 2. Agregar todas las imágenes de la galería
         if (excursion.images?.gallery && excursion.images.gallery.length > 0) {
             excursion.images.gallery.forEach(img => {
-                if (img.public_id) {
-                    publicIdsToDelete.push(img.public_id);
+                if (img) {
+                    publicIdsToDelete.push(img);
                 }
             });
         }
@@ -518,7 +519,7 @@ exports.deleteExcursion = async (req, res) => {
         // ✅ Eliminar TODAS las imágenes de Cloudinary (en paralelo)
         if (publicIdsToDelete.length > 0) {
             console.log(`🗑️ Eliminando ${publicIdsToDelete.length} imágenes de Cloudinary...`);
-            const deletePromises = publicIdsToDelete.map(public_id => deleteFile(public_id));
+            const deletePromises = publicIdsToDelete.map(item => deleteFile(item.public_id, item.mediaType));
             await Promise.all(deletePromises);
             console.log(`✅ ${publicIdsToDelete.length} imágenes eliminadas de Cloudinary`);
         }

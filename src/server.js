@@ -21,6 +21,8 @@ const conectarMongoDBAltas = require('./config/db');
 // Importar las rutas
 const userRoutes = require('./routes/user.routes');
 const excursionRoutes = require('./routes/excursion.routes');
+const emailRoutes = require('./routes/email.routes');
+const reservationRoutes = require('./routes/reservation.routes');
 
 
 // Crear el server
@@ -74,6 +76,8 @@ app.get('/keep-alive', (req, res) => {
 // ======================================================
 app.use('/api/users', userRoutes); // Rutas de usuarios (administradores del sistema)
 app.use('/api/excursions', excursionRoutes);
+app.use('/api/email', emailRoutes);
+app.use('/api/reservations', reservationRoutes);
 
 
 // Configurar Middleware global de errores

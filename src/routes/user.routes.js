@@ -4,7 +4,7 @@ const router = express.Router();
 const userController = require('../controllers/user.controller');
 const validateUser = require('../middlewares/user-validator.middleware');
 const upload = require('../middlewares/upload.middleware');
-const rateLimiter = require('../middlewares/rateLimiter.middleware');
+const { authLimiter } = require('../middlewares/rate-limiters');
 
 // ========================================
 // RUTAS PÚBLICAS (Sin autenticación)
@@ -19,7 +19,7 @@ const rateLimiter = require('../middlewares/rateLimiter.middleware');
  */
 router.post(
     '/register',
-    rateLimiter,
+    authLimiter,
     upload.single('avatar'),
     validateUser.signUp,
     userController.signUp
@@ -34,7 +34,7 @@ router.post(
  */
 router.post(
     '/login',
-    rateLimiter,
+    authLimiter,
     validateUser.login,
     userController.login
 );
@@ -47,7 +47,7 @@ router.post(
  */
 router.post(
     '/logout',
-    rateLimiter,
+    authLimiter,
     userController.logout
 );
 

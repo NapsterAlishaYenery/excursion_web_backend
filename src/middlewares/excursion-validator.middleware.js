@@ -78,6 +78,47 @@ const excursionSchema = Joi.object({
     }),
 
     // ========================================
+    // TURNOS (Shifts) ← NUEVO
+    // ========================================
+    shifts: Joi.object({
+        hasMultipleShifts: Joi.boolean().default(false).messages({
+            'boolean.base': 'hasMultipleShifts must be a boolean'
+        }),
+        availableShifts: Joi.array()
+            .items(
+                Joi.string().valid('morning', 'afternoon', 'night').messages({
+                    'any.only': 'Shift must be one of: morning, afternoon, night'
+                })
+            )
+            .default(['morning'])
+            .messages({
+                'array.base': 'availableShifts must be an array'
+            })
+    })
+    .default({ hasMultipleShifts: false, availableShifts: ['morning'] })
+    .custom((value, helpers) => {
+        const { hasMultipleShifts, availableShifts } = value;
+
+        // Sin multi-turno → exactamente 1
+        if (!hasMultipleShifts && availableShifts.length !== 1) {
+            return helpers.error('any.custom', {
+                message: 'Single-shift excursions must have exactly 1 shift'
+            });
+        }
+        // Con multi-turno → entre 2 y 3
+        if (hasMultipleShifts && (availableShifts.length < 2 || availableShifts.length > 3)) {
+            return helpers.error('any.custom', {
+                message: 'Multi-shift excursions must have between 2 and 3 shifts'
+            });
+        }
+        return value;
+    })
+    .messages({
+        'any.custom': '{{#message}}',
+        'object.base': 'shifts must be an object with hasMultipleShifts and availableShifts'
+    }),
+
+    // ========================================
     // UBICACIÓN
     // ========================================
     location: Joi.object({
@@ -167,6 +208,11 @@ const excursionSchema = Joi.object({
         'array.min': 'At least one badge is required'
     }),
 
+    // ✅ PROHIBIR cloudinaryFolder en el body
+    cloudinaryFolder: Joi.any().forbidden().messages({
+        'any.unknown': 'cloudinaryFolder is auto-generated and cannot be sent'
+    }),
+
     // ========================================
     // METADATOS
     // ========================================
@@ -197,7 +243,7 @@ const validateExcursion = {
      * Validación para CREAR excursión
      */
     create: (req, res, next) => {
-        const { error } = excursionSchema.validate(req.body, { abortEarly: false });
+        const { error, value } = excursionSchema.validate(req.body, { abortEarly: false });
 
         if (error) {
             const errors = error.details.map(detail => detail.message);
@@ -207,6 +253,9 @@ const validateExcursion = {
                 messages: errors
             });
         }
+
+        // ✅ Persistir defaults que aplicó Joi (ej. shifts)
+        req.body = value;
 
         next();
     },
@@ -226,6 +275,9 @@ const validateExcursion = {
             slug: Joi.any().forbidden().messages({
                 'any.unknown': 'Slug is auto-generated and cannot be modified'
             }),
+            cloudinaryFolder: Joi.any().forbidden().messages({
+                'any.unknown': 'cloudinaryFolder is auto-generated and cannot be modified'
+            }),
             createdAt: Joi.any().forbidden(),
             updatedAt: Joi.any().forbidden(),
             images: Joi.any().forbidden().messages({
@@ -235,7 +287,7 @@ const validateExcursion = {
 
         const finalSchema = updateSchema.append(forbiddenFields);
 
-        const { error } = finalSchema.validate(req.body, { abortEarly: false });
+        const { error, value } = finalSchema.validate(req.body, { abortEarly: false });
 
         if (error) {
             const errors = error.details.map(detail => detail.message);
@@ -254,6 +306,9 @@ const validateExcursion = {
                 message: 'At least one field is required to update'
             });
         }
+
+        // ✅ Persistir defaults que aplicó Joi (ej. shifts)
+        req.body = value;
 
         next();
     }
